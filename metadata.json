@@ -1,0 +1,7 @@
+{
+  "name": "IconMint",
+  "description": "Professional browser-based favicon creator and icon design studio with live multi-size previews, preset gallery, and instant web package exports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
