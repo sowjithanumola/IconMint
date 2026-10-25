@@ -232,6 +232,44 @@ function renderBorder(ctx: CanvasRenderingContext2D, config: IconConfig, size: n
 // SVG cache for Lucide icons to prevent re-parsing
 const svgImageCache = new Map<string, HTMLImageElement>();
 
+// Image cache for user-uploaded custom images to prevent duplicate decodes and double-draws
+const customImageCache = new Map<string, HTMLImageElement>();
+
+export function getCustomImage(dataUrl: string): Promise<HTMLImageElement> {
+  if (customImageCache.has(dataUrl)) {
+    return Promise.resolve(customImageCache.get(dataUrl)!);
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    let hasLoaded = false;
+
+    const finalize = () => {
+      if (hasLoaded) return;
+      hasLoaded = true;
+      customImageCache.set(dataUrl, img);
+      resolve(img);
+    };
+
+    img.onload = () => {
+      finalize();
+    };
+
+    img.onerror = (err) => {
+      if (hasLoaded) return;
+      hasLoaded = true;
+      console.error('Failed to load custom image data', err);
+      reject(err);
+    };
+
+    img.src = dataUrl;
+
+    if (img.complete && img.naturalWidth > 0) {
+      finalize();
+    }
+  });
+}
+
 export async function getIconImage(iconName: string, color: string, strokeWidth: number, targetSize: number): Promise<HTMLImageElement> {
   const cacheKey = `${iconName}_${color}_${strokeWidth}_${targetSize}`;
   if (svgImageCache.has(cacheKey)) {
@@ -319,43 +357,41 @@ async function renderContent(ctx: CanvasRenderingContext2D, config: IconConfig, 
     // Dead-center text baseline without downward optical shift
     ctx.fillText(config.text || '', 0, 0);
   } else if (config.contentMode === 'image' && config.customImageDataUrl) {
-    const scale = (config.imageScale ?? 75) / 100;
+    const scale = (config.imageScale ?? 80) / 100;
     const imgSizePx = scale * size;
     const targetX = cx + ((config.iconOffsetX ?? 0) / 100) * (size / 2);
     const targetY = cy + ((config.iconOffsetY ?? 0) / 100) * (size / 2);
+
+    // If shape container is enabled, clip image inside the shape so it doesn't bleed out
+    if (config.bgType !== 'transparent') {
+      createShapePath(ctx, config.shape, size, config.borderRadius);
+      ctx.clip();
+    }
 
     ctx.translate(targetX, targetY);
     if (config.iconRotation) {
       ctx.rotate((config.iconRotation * Math.PI) / 180);
     }
 
-    await new Promise<void>((resolve) => {
-      const customImg = new Image();
-      customImg.onload = () => {
-        const naturalW = customImg.naturalWidth || customImg.width || 1;
-        const naturalH = customImg.naturalHeight || customImg.height || 1;
-        const aspect = naturalW / naturalH;
-        let drawW = imgSizePx;
-        let drawH = imgSizePx;
+    try {
+      const customImg = await getCustomImage(config.customImageDataUrl);
+      const naturalW = customImg.naturalWidth || customImg.width || 1;
+      const naturalH = customImg.naturalHeight || customImg.height || 1;
+      const aspect = naturalW / naturalH;
+      let drawW = imgSizePx;
+      let drawH = imgSizePx;
 
-        if (aspect > 1) {
-          drawH = imgSizePx / aspect;
-        } else {
-          drawW = imgSizePx * aspect;
-        }
-
-        ctx.drawImage(customImg, -drawW / 2, -drawH / 2, drawW, drawH);
-        resolve();
-      };
-      customImg.onerror = (e) => {
-        console.error('Failed to load custom image data', e);
-        resolve();
-      };
-      customImg.src = config.customImageDataUrl!;
-      if (customImg.complete && customImg.naturalWidth > 0) {
-        customImg.onload?.(new Event('load'));
+      if (aspect > 1) {
+        drawH = imgSizePx / aspect;
+      } else {
+        drawW = imgSizePx * aspect;
       }
-    });
+
+      // Draw exactly once
+      ctx.drawImage(customImg, -drawW / 2, -drawH / 2, drawW, drawH);
+    } catch (e) {
+      console.error('Failed to draw custom image', e);
+    }
   }
 
   ctx.restore();

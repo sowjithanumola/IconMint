@@ -21,10 +21,10 @@ interface EditorControlsProps {
   onChange: (updater: (prev: IconConfig) => IconConfig) => void;
 }
 
-type TabKey = 'shape' | 'content' | 'effects';
+type TabKey = 'content' | 'shape' | 'effects';
 
 export const EditorControls: React.FC<EditorControlsProps> = ({ config, onChange }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>('shape');
+  const [activeTab, setActiveTab] = useState<TabKey>('content');
   const [iconSearch, setIconSearch] = useState<string>('');
   const [selectedIconCategory, setSelectedIconCategory] = useState<string>('All');
 
@@ -90,7 +90,12 @@ export const EditorControls: React.FC<EditorControlsProps> = ({ config, onChange
           onChange(prev => ({
             ...prev,
             contentMode: 'image',
-            imageScale: prev.imageScale || 75,
+            // Default to transparent background and no border so the shape is not forced on top of the image!
+            bgType: 'transparent',
+            borderWidth: 0,
+            shadowBlur: 0,
+            cornerBadge: { ...prev.cornerBadge, enabled: false },
+            imageScale: prev.imageScale || 85,
             iconOffsetX: 0,
             iconOffsetY: 0,
             iconRotation: 0,
@@ -112,7 +117,12 @@ export const EditorControls: React.FC<EditorControlsProps> = ({ config, onChange
           onChange(prev => ({
             ...prev,
             contentMode: 'image',
-            imageScale: prev.imageScale || 75,
+            // Default to transparent background and no border so the shape is not forced on top of the image!
+            bgType: 'transparent',
+            borderWidth: 0,
+            shadowBlur: 0,
+            cornerBadge: { ...prev.cornerBadge, enabled: false },
+            imageScale: prev.imageScale || 85,
             iconOffsetX: 0,
             iconOffsetY: 0,
             iconRotation: 0,
@@ -126,21 +136,8 @@ export const EditorControls: React.FC<EditorControlsProps> = ({ config, onChange
 
   return (
     <div className="flex flex-col rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 sm:p-5">
-      {/* Tab Navigation */}
+      {/* Tab Navigation with Content & Graphics First */}
       <div className="flex items-center gap-1 border-b border-neutral-800 pb-3">
-        <button
-          type="button"
-          onClick={() => setActiveTab('shape')}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-            activeTab === 'shape'
-              ? 'bg-neutral-800 text-lime-400 border border-neutral-700'
-              : 'text-neutral-400 hover:text-white'
-          }`}
-        >
-          <Square className="h-3.5 w-3.5" />
-          <span>Shape & Background</span>
-        </button>
-
         <button
           type="button"
           onClick={() => setActiveTab('content')}
@@ -151,7 +148,20 @@ export const EditorControls: React.FC<EditorControlsProps> = ({ config, onChange
           }`}
         >
           <Smile className="h-3.5 w-3.5" />
-          <span>Content & Graphics</span>
+          <span>Icon & Content</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('shape')}
+          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+            activeTab === 'shape'
+              ? 'bg-neutral-800 text-lime-400 border border-neutral-700'
+              : 'text-neutral-400 hover:text-white'
+          }`}
+        >
+          <Square className="h-3.5 w-3.5" />
+          <span>Shape & Canvas</span>
         </button>
 
         <button
@@ -752,16 +762,94 @@ export const EditorControls: React.FC<EditorControlsProps> = ({ config, onChange
 
               {config.customImageDataUrl && (
                 <div className="space-y-4">
+                  {/* Container Shape for Image */}
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-300 mb-1.5">
+                      Background Container Shape
+                    </label>
+                    <div className="grid grid-cols-4 gap-1.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => onChange(prev => ({ ...prev, bgType: 'transparent', borderWidth: 0 }))}
+                        className={`rounded-md border py-1.5 text-xs font-medium transition-colors ${
+                          config.bgType === 'transparent'
+                            ? 'border-lime-400 bg-neutral-800 text-lime-400'
+                            : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        No Shape
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onChange(prev => ({ 
+                          ...prev, 
+                          shape: 'squircle', 
+                          bgType: 'solid', 
+                          bgColor: prev.bgColor || '#0f172a',
+                          borderWidth: 2, 
+                          borderColor: prev.borderColor === 'transparent' ? '#10b981' : prev.borderColor 
+                        }))}
+                        className={`rounded-md border py-1.5 text-xs font-medium transition-colors ${
+                          config.bgType !== 'transparent' && config.shape === 'squircle'
+                            ? 'border-lime-400 bg-neutral-800 text-lime-400'
+                            : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        Squircle
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onChange(prev => ({ 
+                          ...prev, 
+                          shape: 'circle', 
+                          bgType: 'solid', 
+                          bgColor: prev.bgColor || '#0f172a',
+                          borderWidth: 2, 
+                          borderColor: prev.borderColor === 'transparent' ? '#10b981' : prev.borderColor 
+                        }))}
+                        className={`rounded-md border py-1.5 text-xs font-medium transition-colors ${
+                          config.bgType !== 'transparent' && config.shape === 'circle'
+                            ? 'border-lime-400 bg-neutral-800 text-lime-400'
+                            : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        Circle
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onChange(prev => ({ 
+                          ...prev, 
+                          shape: 'rounded-rect', 
+                          borderRadius: 24, 
+                          bgType: 'solid', 
+                          bgColor: prev.bgColor || '#0f172a',
+                          borderWidth: 2, 
+                          borderColor: prev.borderColor === 'transparent' ? '#10b981' : prev.borderColor 
+                        }))}
+                        className={`rounded-md border py-1.5 text-xs font-medium transition-colors ${
+                          config.bgType !== 'transparent' && config.shape === 'rounded-rect'
+                            ? 'border-lime-400 bg-neutral-800 text-lime-400'
+                            : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        Rounded
+                      </button>
+                    </div>
+                  </div>
+
                   <div>
                     <div className="flex items-center justify-between text-xs text-neutral-300 mb-1.5">
                       <span>Image Scale</span>
-                      <span className="font-mono text-neutral-400">{config.imageScale ?? 75}%</span>
+                      <span className="font-mono text-neutral-400">{config.imageScale ?? 85}%</span>
                     </div>
                     <input
                       type="range"
                       min="20"
                       max="100"
-                      value={config.imageScale ?? 75}
+                      value={config.imageScale ?? 85}
                       onChange={e => updateConfig('imageScale', parseInt(e.target.value, 10))}
                       className="w-full accent-lime-400 cursor-pointer"
                     />
